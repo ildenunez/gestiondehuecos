@@ -2,10 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { BarcodeScanner } from "@/components/barcode-scanner"
-import { StatusSelector } from "@/components/status-selector"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { LogOut, Loader2 } from "lucide-react"
 import { logout, isAuthenticated } from "@/lib/auth"
 import { useEffect } from "react"
@@ -47,14 +44,14 @@ export default function MainPage() {
       })
 
       if (response.ok) {
-        setMessage("Movimiento registrado correctamente")
+        setMessage("Registrado correctamente")
         setMessageType("success")
         setCartBarcode("")
         setLocationCode("")
         setStatus(null)
-        setTimeout(() => setMessage(""), 3000)
+        setTimeout(() => setMessage(""), 2500)
       } else {
-        setMessage("Error al registrar el movimiento")
+        setMessage("Error al registrar")
         setMessageType("error")
       }
     } catch (error) {
@@ -71,80 +68,123 @@ export default function MainPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground pb-8">
-      {/* Header */}
-      <div className="sticky top-0 bg-card border-b border-border z-10">
-        <div className="px-4 sm:px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Gestor de Almacén</h1>
-          <Button onClick={handleLogout} variant="outline" size="sm" className="gap-2 bg-transparent">
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Cerrar</span>
-          </Button>
-        </div>
+    <main className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+      {/* Header - Compacto */}
+      <div className="bg-card border-b border-border px-3 py-2 flex justify-between items-center flex-shrink-0">
+        <h1 className="text-lg font-bold text-primary">Almacén</h1>
+        <Button onClick={handleLogout} variant="outline" size="sm" className="gap-1 h-8 text-xs bg-transparent">
+          <LogOut className="h-3 w-3" />
+          Salir
+        </Button>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Message Alert */}
-        {message && (
-          <Card
-            className={`p-4 text-center font-semibold ${
-              messageType === "success"
-                ? "bg-green-100 text-green-900 border-green-300"
-                : "bg-red-100 text-red-900 border-red-300"
-            }`}
-          >
-            {message}
-          </Card>
-        )}
+      {/* Mensaje de alerta */}
+      {message && (
+        <div
+          className={`px-3 py-1 text-center text-sm font-semibold flex-shrink-0 ${
+            messageType === "success" ? "bg-green-100 text-green-900" : "bg-red-100 text-red-900"
+          }`}
+        >
+          {message}
+        </div>
+      )}
 
-        {/* Scanners */}
-        <BarcodeScanner onScan={setCartBarcode} label="Código del Carro" placeholder="Ingresa el código del carro" />
+      {/* Contenido Principal - Compacto */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        {/* Escaners comprimidos */}
+        <div>
+          <label className="text-xs font-semibold block mb-1">Carro</label>
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={cartBarcode}
+              onChange={(e) => setCartBarcode(e.target.value)}
+              placeholder="Código carro"
+              className="flex-1 px-2 py-2 text-sm border border-border rounded bg-background"
+            />
+            <Button size="sm" className="h-9 px-2 bg-primary">
+              📷
+            </Button>
+          </div>
+        </div>
 
-        <BarcodeScanner onScan={setLocationCode} label="Código del Hueco" placeholder="Ingresa el código del hueco" />
+        <div>
+          <label className="text-xs font-semibold block mb-1">Hueco</label>
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={locationCode}
+              onChange={(e) => setLocationCode(e.target.value)}
+              placeholder="Código hueco"
+              className="flex-1 px-2 py-2 text-sm border border-border rounded bg-background"
+            />
+            <Button size="sm" className="h-9 px-2 bg-primary">
+              📷
+            </Button>
+          </div>
+        </div>
 
-        {/* Status Selector */}
-        <StatusSelector selected={status} onSelect={setStatus} />
+        {/* Estado del hueco - Botones compactos */}
+        <div>
+          <label className="text-xs font-semibold block mb-1">Estado</label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: "EMPTY", label: "Vacío", color: "bg-blue-500" },
+              { id: "HALF", label: "50%", color: "bg-yellow-500" },
+              { id: "FULL", label: "Lleno", color: "bg-red-500" },
+            ].map((s) => (
+              <Button
+                key={s.id}
+                onClick={() => setStatus(s.id)}
+                className={`h-12 text-xs font-bold ${
+                  status === s.id ? `${s.color} ring-2 ring-offset-1` : `${s.color} opacity-60`
+                }`}
+              >
+                {s.label}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-        {/* Display Selected Values */}
+        {/* Resumen compacto */}
         {(cartBarcode || locationCode || status) && (
-          <Card className="p-4 bg-secondary">
-            <div className="space-y-2 text-sm">
-              {cartBarcode && (
-                <p>
-                  Carro: <span className="font-semibold">{cartBarcode}</span>
-                </p>
-              )}
-              {locationCode && (
-                <p>
-                  Hueco: <span className="font-semibold">{locationCode}</span>
-                </p>
-              )}
-              {status && (
-                <p>
-                  Estado:{" "}
-                  <span className="font-semibold">
-                    {status === "EMPTY" ? "Vacío" : status === "HALF" ? "50% Lleno" : "Completo"}
-                  </span>
-                </p>
-              )}
-            </div>
-          </Card>
+          <div className="text-xs bg-secondary p-2 rounded border border-border">
+            {cartBarcode && (
+              <p>
+                Carro: <span className="font-semibold">{cartBarcode}</span>
+              </p>
+            )}
+            {locationCode && (
+              <p>
+                Hueco: <span className="font-semibold">{locationCode}</span>
+              </p>
+            )}
+            {status && (
+              <p>
+                Estado:{" "}
+                <span className="font-semibold">
+                  {status === "EMPTY" ? "Vacío" : status === "HALF" ? "50%" : "Lleno"}
+                </span>
+              </p>
+            )}
+          </div>
         )}
+      </div>
 
-        {/* Submit Button */}
+      {/* Botón Enviar - Pegado al fondo */}
+      <div className="px-3 py-2 flex-shrink-0 border-t border-border bg-card">
         <Button
           onClick={handleSubmit}
           disabled={!cartBarcode || !locationCode || !status || loading}
-          className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 disabled:opacity-50"
+          className="w-full h-14 text-base font-bold bg-primary hover:bg-primary/90"
         >
           {loading ? (
             <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Registrando...
             </>
           ) : (
-            "Registrar Movimiento"
+            "Registrar"
           )}
         </Button>
       </div>

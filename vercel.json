@@ -1,7 +1,13 @@
 {
   "buildCommand": "next build",
   "outputDirectory": ".next",
-  "env": ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_PORT"],
+  "env": {
+    "DB_HOST": "@db_host",
+    "DB_USER": "@db_user",
+    "DB_PASSWORD": "@db_password",
+    "DB_NAME": "@db_name",
+    "DB_PORT": "@db_port"
+  },
   "github": {
     "enabled": true,
     "autoAlias": true,
