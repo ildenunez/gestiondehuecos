@@ -1,15 +1,13 @@
 let pool: any = null
 let usesMysql = false
 
-// Initialize MySQL connection if available (for local/production use)
 async function initializePool() {
   if (typeof window !== "undefined") {
-    // Client-side, don't try to use MySQL
     return
   }
 
   try {
-    const mysql = require("mysql2/promise")
+    const mysql = await import("mysql2/promise")
     usesMysql = true
     pool = mysql.createPool({
       host: process.env.DB_HOST || "inetwork.es",
@@ -21,13 +19,17 @@ async function initializePool() {
       connectionLimit: 10,
       queueLimit: 0,
     })
+    console.log("[v0] MySQL pool initialized")
   } catch (error) {
     console.log("[v0] MySQL not available, using mock data")
     usesMysql = false
   }
 }
 
-// Mock data for preview/demo mode
+// Call initializePool when module loads
+initializePool().catch(console.error)
+
+// Mock data for fallback mode
 const mockUsers = [{ id: 1, username: "ilde", password: "8019", name: "Ilde Núñez", role: "admin" }]
 
 let mockLocations = [
@@ -36,11 +38,20 @@ let mockLocations = [
   { id: "U010103A1", size: "GRANDE", status: "FULL" },
 ]
 
-const nextLocationId = 4
-
 export async function query(sql: string, values?: any[]) {
   try {
-    // Mock mode - handle common queries
+    // If MySQL is available, use it
+    if (usesMysql && pool) {
+      const connection = await pool.getConnection()
+      try {
+        const [results] = await connection.execute(sql, values)
+        return results
+      } finally {
+        connection.release()
+      }
+    }
+
+    // Fallback to mock data
     if (sql.includes("SELECT * FROM users WHERE username")) {
       const username = values?.[0]
       return mockUsers.filter((u) => u.username === username)
