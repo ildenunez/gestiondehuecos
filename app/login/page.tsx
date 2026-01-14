@@ -32,7 +32,7 @@ export default function LoginPage() {
       if (res.ok) {
         localStorage.setItem("auth_token", data.token)
         localStorage.setItem("user", JSON.stringify(data.user))
-        router.push("/dashboard")
+        router.push("/main")
       } else {
         setError(data.error || "Error de autenticación")
       }
