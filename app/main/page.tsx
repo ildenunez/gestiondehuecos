@@ -28,39 +28,58 @@ export default function MainPage() {
   }, [router])
 
   const startCamera = async (type: "cart" | "location") => {
+    console.log("[v0] Starting camera for:", type)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, // Cámara trasera en móviles
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       })
 
+      console.log("[v0] Got media stream:", stream)
+      console.log("[v0] Video tracks:", stream.getVideoTracks())
+
       if (videoRef.current) {
+        console.log("[v0] Setting srcObject to video element")
         videoRef.current.srcObject = stream
         streamRef.current = stream
-
-        // Explicitly play video for iOS
-        try {
-          await videoRef.current.play()
-        } catch (playError) {
-          console.error("[v0] Video play error:", playError)
-        }
 
         if (type === "cart") {
           setScanningCart(true)
         } else {
           setScanningLocation(true)
         }
+
+        // Wait for video to be ready and then play
+        videoRef.current.onloadedmetadata = async () => {
+          console.log("[v0] Video metadata loaded, attempting to play")
+          try {
+            await videoRef.current?.play()
+            console.log("[v0] Video playing successfully")
+          } catch (playError) {
+            console.error("[v0] Video play error:", playError)
+            setMessage("Error al reproducir video")
+            setMessageType("error")
+          }
+        }
       }
     } catch (error) {
       console.error("[v0] Error accessing camera:", error)
-      setMessage("No se pudo acceder a la cámara")
+      setMessage("No se pudo acceder a la cámara: " + (error as Error).message)
       setMessageType("error")
     }
   }
 
   const stopCamera = () => {
+    console.log("[v0] Stopping camera")
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current.getTracks().forEach((track) => {
+        console.log("[v0] Stopping track:", track.label)
+        track.stop()
+      })
       streamRef.current = null
     }
     if (videoRef.current) {
@@ -71,7 +90,6 @@ export default function MainPage() {
   }
 
   useEffect(() => {
-    // Cleanup camera on unmount
     return () => {
       stopCamera()
     }
@@ -131,17 +149,23 @@ export default function MainPage() {
           </h2>
         </div>
 
-        <div className="flex-1 relative overflow-hidden">
+        <div className="flex-1 relative bg-gray-900">
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            webkit-playsinline="true"
             className="w-full h-full object-cover"
+            style={{ display: "block" }}
           />
+          {/* Guide overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="border-4 border-primary w-64 h-32 rounded-lg"></div>
+          </div>
+          {/* Debug info */}
+          <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs p-2 rounded">
+            <p>Cámara: {streamRef.current ? "Activa" : "Inactiva"}</p>
+            <p>Video: {videoRef.current?.srcObject ? "Conectado" : "Desconectado"}</p>
           </div>
         </div>
 
@@ -176,7 +200,6 @@ export default function MainPage() {
 
   return (
     <main className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
-      {/* Header - Compacto */}
       <div className="bg-card border-b border-border px-3 py-2 flex justify-between items-center flex-shrink-0">
         <h1 className="text-lg font-bold text-primary">Almacén</h1>
         <Button onClick={handleLogout} variant="outline" size="sm" className="gap-1 h-8 text-xs bg-transparent">
@@ -185,7 +208,6 @@ export default function MainPage() {
         </Button>
       </div>
 
-      {/* Mensaje de alerta */}
       {message && (
         <div
           className={`px-3 py-1 text-center text-sm font-semibold flex-shrink-0 ${
@@ -196,9 +218,7 @@ export default function MainPage() {
         </div>
       )}
 
-      {/* Contenido Principal - Compacto */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-        {/* Escaners comprimidos */}
         <div>
           <label className="text-xs font-semibold block mb-1">Carro</label>
           <div className="flex gap-1">
@@ -231,7 +251,6 @@ export default function MainPage() {
           </div>
         </div>
 
-        {/* Estado del hueco - Botones compactos */}
         <div>
           <label className="text-xs font-semibold block mb-1">Estado</label>
           <div className="grid grid-cols-3 gap-2">
@@ -253,7 +272,6 @@ export default function MainPage() {
           </div>
         </div>
 
-        {/* Resumen compacto */}
         {(cartBarcode || locationCode || status) && (
           <div className="text-xs bg-secondary p-2 rounded border border-border">
             {cartBarcode && (
@@ -278,7 +296,6 @@ export default function MainPage() {
         )}
       </div>
 
-      {/* Botón Enviar - Pegado al fondo */}
       <div className="px-3 py-2 flex-shrink-0 border-t border-border bg-card">
         <Button
           onClick={handleSubmit}
