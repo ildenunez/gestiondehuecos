@@ -30,12 +30,20 @@ export default function MainPage() {
   const startCamera = async (type: "cart" | "location") => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // Cámara trasera en móviles
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, // Cámara trasera en móviles
+        audio: false,
       })
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
+
+        // Explicitly play video for iOS
+        try {
+          await videoRef.current.play()
+        } catch (playError) {
+          console.error("[v0] Video play error:", playError)
+        }
 
         if (type === "cart") {
           setScanningCart(true)
@@ -44,7 +52,7 @@ export default function MainPage() {
         }
       }
     } catch (error) {
-      console.error("Error accessing camera:", error)
+      console.error("[v0] Error accessing camera:", error)
       setMessage("No se pudo acceder a la cámara")
       setMessageType("error")
     }
@@ -54,6 +62,9 @@ export default function MainPage() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
     }
     setScanningCart(false)
     setScanningLocation(false)
@@ -120,14 +131,21 @@ export default function MainPage() {
           </h2>
         </div>
 
-        <div className="flex-1 relative">
-          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-          <div className="absolute inset-0 flex items-center justify-center">
+        <div className="flex-1 relative overflow-hidden">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            webkit-playsinline="true"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="border-4 border-primary w-64 h-32 rounded-lg"></div>
           </div>
         </div>
 
-        <div className="p-3 space-y-2">
+        <div className="p-3 space-y-2 bg-card">
           <input
             type="text"
             value={scanningCart ? cartBarcode : locationCode}
