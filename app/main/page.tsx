@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LogOut, Loader2 } from "lucide-react"
@@ -16,11 +16,55 @@ export default function MainPage() {
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error" | null>(null)
 
+  const [scanningCart, setScanningCart] = useState(false)
+  const [scanningLocation, setScanningLocation] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push("/login")
     }
   }, [router])
+
+  const startCamera = async (type: "cart" | "location") => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, // Cámara trasera en móviles
+      })
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        streamRef.current = stream
+
+        if (type === "cart") {
+          setScanningCart(true)
+        } else {
+          setScanningLocation(true)
+        }
+      }
+    } catch (error) {
+      console.error("Error accessing camera:", error)
+      setMessage("No se pudo acceder a la cámara")
+      setMessageType("error")
+    }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    setScanningCart(false)
+    setScanningLocation(false)
+  }
+
+  useEffect(() => {
+    // Cleanup camera on unmount
+    return () => {
+      stopCamera()
+    }
+  }, [])
 
   const handleSubmit = async () => {
     if (!cartBarcode || !locationCode || !status) {
@@ -67,6 +111,51 @@ export default function MainPage() {
     router.push("/login")
   }
 
+  if (scanningCart || scanningLocation) {
+    return (
+      <main className="h-screen bg-black flex flex-col">
+        <div className="bg-card border-b border-border px-3 py-2">
+          <h2 className="text-lg font-bold text-center text-foreground">
+            {scanningCart ? "Escanear Carro" : "Escanear Hueco"}
+          </h2>
+        </div>
+
+        <div className="flex-1 relative">
+          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="border-4 border-primary w-64 h-32 rounded-lg"></div>
+          </div>
+        </div>
+
+        <div className="p-3 space-y-2">
+          <input
+            type="text"
+            value={scanningCart ? cartBarcode : locationCode}
+            onChange={(e) => (scanningCart ? setCartBarcode(e.target.value) : setLocationCode(e.target.value))}
+            placeholder="O escribe el código manualmente"
+            className="w-full px-3 py-3 text-base border border-border rounded bg-background"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={stopCamera} variant="destructive" className="h-12">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if ((scanningCart && cartBarcode) || (scanningLocation && locationCode)) {
+                  stopCamera()
+                }
+              }}
+              disabled={scanningCart ? !cartBarcode : !locationCode}
+              className="h-12 bg-primary"
+            >
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       {/* Header - Compacto */}
@@ -102,7 +191,7 @@ export default function MainPage() {
               placeholder="Código carro"
               className="flex-1 px-2 py-2 text-sm border border-border rounded bg-background"
             />
-            <Button size="sm" className="h-9 px-2 bg-primary">
+            <Button onClick={() => startCamera("cart")} size="sm" className="h-9 px-2 bg-primary">
               📷
             </Button>
           </div>
@@ -118,7 +207,7 @@ export default function MainPage() {
               placeholder="Código hueco"
               className="flex-1 px-2 py-2 text-sm border border-border rounded bg-background"
             />
-            <Button size="sm" className="h-9 px-2 bg-primary">
+            <Button onClick={() => startCamera("location")} size="sm" className="h-9 px-2 bg-primary">
               📷
             </Button>
           </div>
